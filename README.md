@@ -77,4 +77,6 @@ HEIC/HEIF及不同视频编码能否解码取决于浏览器。无法解码的�
 
 PDF使用由Noto Sans SC生成的400字重静态TrueType字体，派生字体内部命名为Xingji Sans；字体、来源说明与OFL许可证位于 `public/fonts/`。为避免字体子集在部分PDF阅读器中的缺字问题，嵌入完整TrueType字体。来源：https://github.com/google/fonts/tree/main/ofl/notosanssc。
 
+仓库中的完整字体以压缩分块资源保存于 `assets/fonts/`，安装依赖、开发、测试和构建时会自动还原到 `public/fonts/travel-sans.ttf`。还原会验证每个分块及完整字体的大小和SHA-256；无需额外下载字体。
+
 产品需求见 [需求草案](docs/requirements.md)。大量素材的后续架构与功能建议见 [存储方案与同类应用调研](docs/storage-and-feature-research.md)，该方案尚未实施存储迁移。

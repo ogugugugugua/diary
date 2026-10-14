@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-server/
+.sites-runtime/
+.env*
+!.env.example
+*.log
+test-results/
+*.tsbuildinfo
+.DS_Store
+*.xingji.zip
+*.xingji.json
+/public/fonts/travel-sans.ttf
+/public/fonts/travel-sans.ttf.*.tmp

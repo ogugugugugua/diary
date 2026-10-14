@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "original": {
+    "file": "travel-sans.ttf",
+    "size": 10596076,
+    "sha256": "3a070babebaf82da347f46bf87c18df58379ed5502d1e6637d161da151825a1b"
+  },
+  "archive": {
+    "format": "gzip",
+    "size": 6303578,
+    "sha256": "8495f397986733664933c8e380cbe03e1bffb06772ff67dc264c4949cbf63f5a"
+  },
+  "parts": [
+    {
+      "file": "travel-sans.ttf.gz.part-000",
+      "size": 262144,
+      "sha256": "b6e46ee88455c65dc3317e4bad95ffb6868432c5e3a29bc280bbed6ec8e50d27"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-001",
+      "size": 262144,
+      "sha256": "155bfd8e3a4e16281be51093cc2910a5e586bc5262e7bebbf0fb699386acea8d"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-002",
+      "size": 262144,
+      "sha256": "059d71508c73c8508c3070bb88ed62ad0880be29a608ae9c8a3cbd9f16cf4f9d"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-003",
+      "size": 262144,
+      "sha256": "06fdc9edd7475e3dd707c5e9b629391ffe9a2893a6920cb1b329b310c2ca640e"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-004",
+      "size": 262144,
+      "sha256": "f1ce94ac99eccbaf11cdd4ec7e357bab5b8fe05298f038c05f9851208a70b8c7"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-005",
+      "size": 262144,
+      "sha256": "07fafc87d2c2c52953d1bf93c545536f7a323579df97a9ac1ea4852241f1e44e"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-006",
+      "size": 262144,
+      "sha256": "ab4c336b34f0057d37fc190ecb8993950724041c0c837bf894dcd66542cde22a"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-007",
+      "size": 262144,
+      "sha256": "20ec82ac8195f9beb1c1f90892b80f22bffcc8ada99a6c918d6110c7e018ec51"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-008",
+      "size": 262144,
+      "sha256": "08752ca3731a3749497cd2597f3a3fd425f14fb524a42bbe2104947f470144ce"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-009",
+      "size": 262144,
+      "sha256": "44a108b404ef8a9be315985c96d5fe670494238d47d4d3ee49bd553cb538b152"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-010",
+      "size": 262144,
+      "sha256": "cbf3da47233d69d69fe009016e5a01a4de53a7045ba291dbf5257865d407c11e"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-011",
+      "size": 262144,
+      "sha256": "a1ef0cd0037ed208f86db9794558205aa095d23c55694baccbc296a4468b7a34"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-012",
+      "size": 262144,
+      "sha256": "44ee00ad0d55441a1652050ea8f16502fc93573d8e01093da4b871df63e87822"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-013",
+      "size": 262144,
+      "sha256": "7544096489a6dd168538b2e62fb8bce7d986dd3c2de287c78bc8998b31d78859"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-014",
+      "size": 262144,
+      "sha256": "9c662f0f90a60c6250f3f5dc0b8e98f6149f1e31304009b0dfbca748fdc23d06"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-015",
+      "size": 262144,
+      "sha256": "ffe7daa52b4f3c26f774a1b14c386e39aaac212662ebdde96d8fc7ba5a0c9bb4"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-016",
+      "size": 262144,
+      "sha256": "1d56dea2ed67e8dbe779b3464af9a1f37ec26746c701072ea928ff904327894b"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-017",
+      "size": 262144,
+      "sha256": "a83c2d066eac1f20416145c509dae43bf69e2f25963dd7b5a4d53c5b486700df"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-018",
+      "size": 262144,
+      "sha256": "350680628ec3bb25a0efea43b5f38283fb802d7de3fb7f6c07008c76b4186e07"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-019",
+      "size": 262144,
+      "sha256": "27fb90dfb1833803516ece3917ef49268f7260d79bbbc85dfec1a155d3f66953"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-020",
+      "size": 262144,
+      "sha256": "caa4b8270af3d77f0a125d7ec1890c481825e15b482b068956bc485b265d4d66"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-021",
+      "size": 262144,
+      "sha256": "8d0bdcf9271f44c37c1fdc91f47e38815aff44676822eb1dc638d805e710c18d"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-022",
+      "size": 262144,
+      "sha256": "df2975d9d1786501c2db49eccf671492a9e071dd8cc82408d2f9957fb68c064b"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-023",
+      "size": 262144,
+      "sha256": "f76650555c3b0e68ba70829af58e5546d78869735c03e0ef9c78c5a95e7c5db5"
+    },
+    {
+      "file": "travel-sans.ttf.gz.part-024",
+      "size": 12122,
+      "sha256": "fdbb1407fb3d13d40a4274d2030a85a109e45c05998f4e13bd72ae8d560c2ebb"
+    }
+  ]
+}

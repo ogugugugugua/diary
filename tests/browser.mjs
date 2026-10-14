@@ -1,0 +1,60 @@
+import {chromium} from 'playwright-core';
+import {readFile,mkdir} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {PDFDocument} from 'pdf-lib';
+
+await mkdir('test-results',{recursive:true});
+const executablePath=process.env.CHROMIUM_PATH||'/usr/bin/chromium';
+const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});
+const page=await context.newPage(),errors=[];
+page.on('pageerror',error=>errors.push(error.message));
+let rejectAI=false,aiCalls=0,cloudCalls=0;
+await page.route('**/api/ai',async route=>{
+  aiCalls++;const input=route.request().postDataJSON();
+  if(rejectAI){await route.fulfill({status:401,json:{error:'测试中的服务拒绝访问，请检查密钥。'}});return;}
+  if(input.task==='test'){await route.fulfill({json:{text:'OK'}});return;}
+  if(input.task==='extract'){await route.fulfill({json:{text:JSON.stringify({facts:[{date:'2026-10-02',place:'湖边',event:'全家沿湖散步',feeling:'放松'}],uncertain:['请确认地点名称']})}});return;}
+  assert.equal(input.task,'generate');assert.ok(input.data.memories.every(memory=>typeof memory.text==='string'));
+  assert.ok(input.data.memories.some(memory=>memory.text.includes('一家人沿湖散步')));
+  const chapters=input.data.existingChapters.map((chapter,index)=>({title:chapter.title,body:index?'模型整理后的正文，回忆来自用户确认。':'这段新文字应该被锁定保护挡住。',assetIds:[input.data.assets[0].id,'invented-asset']}));
+  await route.fulfill({json:{text:JSON.stringify({chapters})}});
+});
+await page.route('**/api/transcribe',async route=>{assert.match(route.request().headers()['content-type'],/multipart\/form-data/);await route.fulfill({json:{text:'一家人沿湖散步，听见风吹过树叶。'}});});
+const lake=await readFile('public/images/lake.jpg'),road=await readFile('public/images/road.jpg');
+await page.route('**/api/baidu',async route=>{cloudCalls++;const input=route.request().postDataJSON();if(input.action==='list')await route.fulfill({json:{files:[{id:123,name:'网盘测试照片.jpg',path:'/网盘测试照片.jpg',size:road.length,isDir:false}],nextStart:null}});else if(input.action==='download')await route.fulfill({contentType:'image/jpeg',body:road});else await route.fulfill({status:400,json:{error:'测试中不执行真实授权。'}});});
+async function assertSaved(){await page.getByText('已保存至本机',{exact:true}).waitFor();}
+async function download(action,path){const promise=page.waitForEvent('download',{timeout:90000});await action();const file=await promise;await file.saveAs(path);return file;}
+try{
+  await page.goto('http://localhost:5173/',{waitUntil:'networkidle'});
+  await page.getByRole('button',{name:'打开山海之间，慢一点',exact:true}).waitFor();
+  await page.screenshot({path:'test-results/library.png',fullPage:true});
+  await page.getByRole('button',{name:'新建游记',exact:true}).click();
+  const dialog=page.getByRole('dialog');await dialog.getByLabel('游记标题').fill('测试家庭旅行');await dialog.getByLabel('一句话简介').fill('一起出发，也一起把回忆写下来。');await dialog.getByLabel('出发日期').fill('2026-10-01');await dialog.getByLabel('结束日期').fill('2026-10-03');await dialog.getByRole('button',{name:'创建游记',exact:true}).click();
+  await page.locator('.assets-panel input[type=file]').setInputFiles([{name:'测试照片.jpg',mimeType:'image/jpeg',buffer:lake},{name:'重复照片.jpg',mimeType:'image/jpeg',buffer:lake}]);
+  await page.getByText('1 个素材已导入',{exact:true}).waitFor({timeout:30000});assert.ok(await page.getByText('跳过 1 张内容相同的重复照片。',{exact:true}).isVisible());await page.getByRole('button',{name:'继续整理',exact:true}).click();assert.equal(await page.locator('.asset-card').count(),1);
+  await page.getByRole('button',{name:'查看测试照片.jpg',exact:true}).click();await dialog.getByLabel('图注').fill('湖边散步的一个下午');await dialog.getByLabel('拍摄日期').fill('2026-10-02');await dialog.getByLabel('地点',{exact:true}).fill('湖边');await dialog.getByRole('button',{name:'保存信息',exact:true}).click();
+  await page.getByRole('button',{name:/2 补充回忆/}).click();await page.locator('.memory-textarea').fill('一家人沿湖散步，孩子问湖的另一边是什么。');await page.getByRole('button',{name:'保存回忆',exact:true}).click();await page.getByRole('button',{name:'确认使用原文',exact:true}).click();
+  execFileSync('ffmpeg',['-y','-f','lavfi','-i','sine=frequency=440:duration=0.3','test-results/voice.wav'],{stdio:'ignore'});
+  await page.locator('.memories-panel input[type=file]').setInputFiles('test-results/voice.wav');await page.getByRole('button',{name:'识别录音 →',exact:true}).click();
+  const setup=page.getByRole('dialog',{name:'配置AI模型'});await setup.waitFor();await setup.getByLabel('API密钥',{exact:true}).nth(0).pressSequentially('fixture-writing-key');await setup.getByLabel('API密钥',{exact:true}).nth(1).fill('fixture-speech-key');assert.equal(await setup.getByLabel('API密钥',{exact:true}).nth(0).inputValue(),'fixture-writing-key');await setup.getByRole('button',{name:'返回游记，继续识别',exact:true}).click();assert.ok(await page.getByText('录音已就绪',{exact:true}).isVisible());
+  await page.getByRole('button',{name:'模型与连接',exact:true}).click();await page.getByLabel('API密钥',{exact:true}).nth(0).fill('fixture-writing-key');await page.getByLabel('API密钥',{exact:true}).nth(1).fill('fixture-speech-key');await page.getByRole('button',{name:'测试写作连接',exact:true}).click();await page.getByText('测试通过',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'旅行库',exact:false}).first().click();await page.getByRole('button',{name:'打开测试家庭旅行',exact:true}).click();await page.getByRole('button',{name:/2 补充回忆/}).click();await page.getByRole('button',{name:'AI提取信息',exact:true}).click();await page.getByText('请确认地点名称',{exact:true}).waitFor();await page.locator('.memory-card').getByLabel('地点',{exact:true}).fill('确认后的湖边');await page.getByRole('button',{name:'确认提取结果',exact:true}).click();
+  execFileSync('ffmpeg',['-y','-f','lavfi','-i','sine=frequency=440:duration=0.3','test-results/voice.wav'],{stdio:'ignore'});
+  await page.locator('.memories-panel input[type=file]').setInputFiles('test-results/voice.wav');await page.getByRole('button',{name:'识别录音 →',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.memory-textarea')?.value.includes('风吹过树叶'));await page.getByRole('button',{name:'保存回忆',exact:true}).click();await page.getByRole('button',{name:'确认使用原文',exact:true}).click();await page.locator('.memory-audio').waitFor({timeout:10000});assert.equal(await page.locator('.memory-audio').count(),1);
+  await page.getByRole('button',{name:/3 编辑游记/}).click();await page.getByRole('button',{name:'按时间建立章节',exact:true}).click();await page.getByLabel('章节标题',{exact:true}).fill('锁定章节');await page.getByLabel('正文',{exact:true}).fill('家人亲手写好的正文，必须保留。');await page.getByRole('button',{name:'锁定章节',exact:true}).click();await page.getByRole('button',{name:'新增章节',exact:true}).click();await page.getByLabel('章节标题',{exact:true}).fill('可更新章节');await page.getByLabel('正文',{exact:true}).fill('原正文');
+  await page.getByRole('button',{name:'AI生成初稿',exact:true}).click();await page.getByRole('dialog',{name:'初稿已整理，先看看'}).waitFor();await page.getByRole('button',{name:'应用到未锁定章节',exact:true}).click();assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),'模型整理后的正文，回忆来自用户确认。');await page.getByRole('button',{name:'撤销',exact:true}).click();assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),'原正文');await page.getByTitle('重做',{exact:true}).click();await page.locator('.chapter-select').first().click();assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),'家人亲手写好的正文，必须保留。');
+  await assertSaved();await page.reload({waitUntil:'networkidle'});await page.getByRole('button',{name:'打开测试家庭旅行',exact:true}).click();await page.locator('.editor-canvas .paper').waitFor({timeout:60000});assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),'家人亲手写好的正文，必须保留。');await page.screenshot({path:'test-results/editor.png',fullPage:true});
+  await download(()=>page.locator('.trip-heading').getByRole('button',{name:'导出PDF',exact:true}).click(),'test-results/journal.pdf');
+  const pdf=await PDFDocument.load(await readFile('test-results/journal.pdf'));assert.equal(pdf.getPageCount(),3);const {width,height}=pdf.getPages()[0].getSize();assert.ok(Math.abs(width-595.28)<.1&&Math.abs(height-841.89)<.1);
+  await page.getByRole('button',{name:'备份项目',exact:true}).click();await download(()=>dialog.getByRole('button',{name:/^完整备份/}).click(),'test-results/project.zip');
+  await page.getByRole('button',{name:'返回旅行库',exact:true}).click();await page.locator('input[accept=".json,.zip,.xingji"]').setInputFiles('test-results/project.zip');await page.getByText('项目与素材已恢复，可以继续编辑。',{exact:true}).waitFor({timeout:30000});await page.getByRole('button',{name:/1 整理素材/}).click();assert.equal(await page.locator('.asset-card').count(),1);await page.waitForFunction(()=>document.querySelector('.asset-card img')?.naturalWidth>0);
+  await page.getByRole('button',{name:'百度网盘',exact:true}).click();await dialog.getByText('已有有效Access Token',{exact:true}).click();await dialog.getByLabel('Access Token',{exact:true}).fill('fixture-token');await dialog.getByRole('button',{name:'验证并读取目录',exact:true}).click();await dialog.getByText('已读取目录',{exact:true}).waitFor();await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'导入 1 个素材',exact:true}).click();await page.getByText('1 个素材已导入',{exact:true}).waitFor({timeout:30000});await page.getByRole('button',{name:'继续整理',exact:true}).click();assert.equal(await page.locator('.asset-card').count(),2);
+  await page.getByRole('button',{name:'备份项目',exact:true}).click();await download(()=>dialog.getByRole('button',{name:/^轻量备份/}).click(),'test-results/project.json');await page.getByRole('button',{name:'返回旅行库',exact:true}).click();await page.locator('input[accept=".json,.zip,.xingji"]').setInputFiles('test-results/project.json');await page.getByRole('button',{name:/1 整理素材/}).click();await page.getByRole('button',{name:'查看测试照片.jpg',exact:true}).click();await dialog.locator('input[type=file]').setInputFiles({name:'原照片.jpg',mimeType:'image/jpeg',buffer:lake});await page.getByText('原文件已重新关联。',{exact:true}).waitFor();await dialog.getByRole('button',{name:'保存信息',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.asset-card img')?.naturalWidth>0);
+  await page.getByRole('button',{name:'模型与连接',exact:true}).click();assert.equal(await page.getByLabel('API密钥',{exact:true}).nth(0).inputValue(),'');await page.getByLabel('API密钥',{exact:true}).nth(0).fill('fixture-bad-key');rejectAI=true;await page.getByRole('button',{name:'测试写作连接',exact:true}).click();await page.getByRole('alert').filter({hasText:'测试中的服务拒绝访问'}).waitFor();assert.equal(await page.getByText('测试通过',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'旅行库',exact:false}).first().click();await page.getByRole('textbox',{name:'搜索游记',exact:true}).fill('没有这个游记');assert.equal(await page.locator('.trip-card').count(),0);await page.getByRole('textbox',{name:'搜索游记',exact:true}).fill('');
+  const mobile=await context.newPage({viewport:{width:390,height:844}});await mobile.goto('http://localhost:5173/',{waitUntil:'networkidle'});await mobile.locator('.library-hero').waitFor();assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));await mobile.screenshot({path:'test-results/mobile.png',fullPage:true});await mobile.close();
+  assert.deepEqual(errors,[]);assert.ok(aiCalls>=4&&cloudCalls>=2);
+  console.log(JSON.stringify({result:'passed',checks:['创建旅行','批量照片去重','修改拍摄信息','回忆确认','首次配置模型时保留录音','语音转写与原始录音保存','模型初稿预览','锁定章节保护','撤销重做','刷新恢复','A4中文PDF下载','完整备份恢复','网盘目录与文件导入（模拟响应）','轻量恢复与重新关联','凭据不持久保存','失败连接状态','搜索','手机布局'],pages:pdf.getPageCount(),errors}));
+}catch(error){await page.screenshot({path:'test-results/failure.png',fullPage:true});console.error('浏览器验收未通过：',error.message);throw error;}finally{await browser.close();}

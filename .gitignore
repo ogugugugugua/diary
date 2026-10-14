@@ -12,3 +12,7 @@ test-results/
 *.xingji.json
 /public/fonts/travel-sans.ttf
 /public/fonts/travel-sans.ttf.*.tmp
+xingji-data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

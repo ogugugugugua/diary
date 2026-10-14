@@ -54,7 +54,29 @@ export async function handleTranscribe(request:Request,fetcher:Fetch=fetch,allow
   }catch(error){return json({error:error instanceof Error&&(error.name==='TimeoutError'||error.name==='AbortError')?'语音识别超时，请重试。':error instanceof Error?error.message:'语音识别失败。'},400);}
 }
 const baiduURL=(method:string,token:string)=>{const url=new URL('https://pan.baidu.com/rest/2.0/xpan/file');url.searchParams.set('method',method);url.searchParams.set('access_token',token);return url;};
-const safeBaiduURL=(url:URL)=>url.protocol==='https:'&&['baidu.com','baidupcs.com','bcebos.com'].some(host=>url.hostname===host||url.hostname.endsWith('.'+host));
+export const safeBaiduURL=(url:URL)=>!url.username&&!url.password&&url.protocol==='https:'&&['baidu.com','baidupcs.com','bcebos.com'].some(host=>url.hostname===host||url.hostname.endsWith('.'+host));
+export async function baiduAccount(token:string,fetcher:Fetch=fetch):Promise<string>{
+  const url=new URL('https://pan.baidu.com/rest/2.0/xpan/nas');url.search=new URLSearchParams({method:'uinfo',access_token:token}).toString();
+  const response=await fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(30000)});if(!response.ok)throw upstreamError(response.status,'百度网盘');
+  const data=await response.json() as {errno?:number;uk?:string|number};if(data.errno!==0||!data.uk)throw new Error('无法确认百度网盘账号，请检查应用权限或从本地目录引用。');return String(data.uk);
+}
+export async function baiduFile(token:string,fileId:number,fetcher:Fetch=fetch){
+  if(!Number.isSafeInteger(fileId)||fileId<=0)throw new Error('文件编号不正确。');
+  const url=new URL('https://pan.baidu.com/rest/2.0/xpan/multimedia');url.search=new URLSearchParams({method:'filemetas',access_token:token,fsids:JSON.stringify([fileId]),dlink:'1',thumb:'1',extra:'1'}).toString();
+  const response=await fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(30000)});if(!response.ok)throw upstreamError(response.status,'百度网盘');
+  const data=await response.json() as {errno?:number;list?:{fs_id?:number;dlink?:string;size?:number;md5?:string;server_mtime?:number;server_filename?:string;path?:string;thumbs?:Record<string,string>}[]};const file=data.list?.[0];
+  if(data.errno!==0||!file?.dlink)throw new Error('百度网盘未提供文件访问权限。');return file;
+}
+export async function baiduStream(token:string,address:string,fetcher:Fetch=fetch):Promise<Response>{
+  let url=new URL(address);url.searchParams.set('access_token',token);
+  for(let hop=0;hop<5;hop++){
+    if(!safeBaiduURL(url))throw new Error('百度返回的下载地址不在支持范围内。');
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);let response:Response;
+    try{response=await fetcher(url,{headers:{'User-Agent':'pan.baidu.com'},redirect:'manual',signal:controller.signal});}finally{clearTimeout(timer);}
+    if(response.status>=300&&response.status<400){const location=response.headers.get('location');await response.body?.cancel();if(!location)throw new Error('下载链接跳转失败。');url=new URL(location,url);continue;}
+    if(!response.ok||!response.body)throw upstreamError(response.status,'百度网盘');return response;
+  }throw new Error('下载链接跳转次数过多。');
+}
 export async function handleBaidu(request:Request,fetcher:Fetch=fetch):Promise<Response> {
   try{
     const body=await request.json() as Record<string,unknown>,token=String(body.token||'');

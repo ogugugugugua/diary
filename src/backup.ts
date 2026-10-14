@@ -44,7 +44,8 @@ export async function restoreProject(file:File):Promise<{trip:Trip;blobs:{key:st
   const blobs:{key:string;blob:Blob}[]=[],originals=new Map<string,string>(),thumbnails=new Map<string,string>(),audios=new Map<string,string>();
   if(zip&&Array.isArray(data.files)){
     let total=0;
-    for(const entry of data.files.slice(0,3000) as Entry[]){
+    if(data.files.length>50000)throw new Error('备份中的素材条目超过5万个，请拆分项目。');
+    for(const entry of data.files as Entry[]){
       if(!entry||typeof entry.path!=='string'||! /^(media|audio)\/[a-zA-Z0-9_-]+(?:-(original|thumbnail))?\.bin$/.test(entry.path))throw new Error('备份中的素材路径不正确。');
       const target=entry.assetId?oldAssets.get(entry.assetId):entry.memoryId?oldMemories.get(entry.memoryId):undefined;if(!target)continue;
       const item=zip.file(entry.path);if(!item)continue;
@@ -55,7 +56,7 @@ export async function restoreProject(file:File):Promise<{trip:Trip;blobs:{key:st
     }
   }
   trip.id=id();trip.demo=false;trip.updatedAt=now();trip.coverId=oldAssets.get(trip.coverId||'');
-  trip.assets=trip.assets.map(a=>({...a,id:oldAssets.get(a.id)!,blobKey:originals.get(a.id),thumbnailKey:thumbnails.get(a.id),src:undefined,missing:!originals.has(a.id)}));
+  trip.assets=trip.assets.map(a=>({...a,id:oldAssets.get(a.id)!,blobKey:originals.get(a.id),thumbnailKey:thumbnails.get(a.id),source:undefined,src:undefined,missing:!originals.has(a.id)&&!thumbnails.has(a.id)}));
   trip.memories=trip.memories.map(m=>({...m,id:oldMemories.get(m.id)!,audioKey:audios.get(m.id),assetId:oldAssets.get(m.assetId||'')}));
   trip.chapters=trip.chapters.map(c=>({...c,id:id(),assetIds:c.assetIds.map(a=>oldAssets.get(a)!).filter(Boolean)}));
   return {trip,blobs};

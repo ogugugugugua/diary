@@ -15,10 +15,10 @@ export function Modal({title,children,onClose,wide=false}:{title:string;children
     <div className="modal-heading"><h2 id={titleId}>{title}</h2><button className="icon-button" aria-label="关闭对话框" onClick={onClose}><X size={20}/></button></div>{children}
   </div></div>;
 }
-export function AssetPicture({asset,className='',style}:{asset?:Asset;className?:string;style?:React.CSSProperties}){
-  const src=useAssetURL(asset);return src?<img className={className} src={src} alt={asset?.caption||asset?.name||'旅行照片'} style={{objectFit:asset?.fit||'cover',objectPosition:`${asset?.cropX??50}% ${asset?.cropY??50}%`,...style}} loading="lazy"/>:<div className={`image-placeholder ${className}`} style={style}><ImageOff size={26}/><span>{asset?.missing?'素材待关联':'暂无画面'}</span></div>;
+export function AssetPicture({asset,className='',style,print=false}:{asset?:Asset;className?:string;style?:React.CSSProperties;print?:boolean}){
+  const src=useAssetURL(asset,false,print?'print':'thumb');return src?<img className={className} src={src} alt={asset?.caption||asset?.name||'旅行照片'} style={{objectFit:asset?.fit||'cover',objectPosition:`${asset?.cropX??50}% ${asset?.cropY??50}%`,...style}} loading="lazy"/>:<div className={`image-placeholder ${className}`} style={style}><ImageOff size={26}/><span>{asset?.missing?'素材待关联':'暂无画面'}</span></div>;
 }
-function PaperImage({asset,style}:{asset?:Asset;style:React.CSSProperties}){return <AssetPicture asset={asset} className="paper-image" style={style}/>;}
+function PaperImage({asset,style}:{asset?:Asset;style:React.CSSProperties}){return <AssetPicture asset={asset} className="paper-image" style={style} print/>;}
 export function Paper({page,trip,scale=0.65}:{page:Page;trip:Trip;scale?:number}){
   return <div className="paper-shell" style={{width:`${210*scale}mm`,height:`${297*scale}mm`}}><div className="paper" style={{transform:`scale(${scale})`}}>
     {page.blocks.map((block,index)=>block.type==='text'?<div key={index} className="paper-text" style={{left:`${block.x}mm`,top:`${block.y}mm`,fontSize:`${block.size}pt`,color:block.color}}>{block.text}</div>:<PaperImage key={index} asset={trip.assets.find(a=>a.id===block.assetId)} style={{left:`${block.x}mm`,top:`${block.y}mm`,width:`${block.width}mm`,height:`${block.height}mm`}}/>)}

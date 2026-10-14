@@ -64,7 +64,7 @@ export function printWarnings(trip:Trip,pages:Page[]):{assetId?:string;message:s
   const warnings:{assetId?:string;message:string}[]=[], seen=new Set<string>(), captionSeen=new Set<string>();
   for(const page of pages)for(const block of page.blocks)if(block.type==='image') {
     const asset=trip.assets.find(a=>a.id===block.assetId);if(!asset)continue;
-    const ratios=[asset.width/(block.width/25.4),asset.height/(block.height/25.4)],dpi=asset.fit==='contain'?Math.max(...ratios):Math.min(...ratios);
+    const ratios=[(asset.renderWidth||asset.width)/(block.width/25.4),(asset.renderHeight||asset.height)/(block.height/25.4)],dpi=asset.fit==='contain'?Math.max(...ratios):Math.min(...ratios);
     if(!seen.has(asset.id)&&dpi<150)warnings.push({assetId:asset.id,message:`「${asset.name}」在当前版式下约${Math.round(dpi)} DPI，建议换用更清晰的原图或缩小尺寸。`});
     if(!page.cover&&!captionSeen.has(asset.id)){if(wrapText(asset.caption||asset.name,block.width,8).length>2)warnings.push({assetId:asset.id,message:`「${asset.name}」的图注超过两行，页面仅显示前两行，建议缩短图注或把故事放入正文。`});captionSeen.add(asset.id);}
     seen.add(asset.id);

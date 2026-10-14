@@ -39,22 +39,25 @@ const number = (v: unknown, fallback = 0) => typeof v === 'number' && Number.isF
 export function validateTrip(input: unknown): Trip {
   const t = record(input);
   if (typeof t.title !== 'string' || !Array.isArray(t.assets) || !Array.isArray(t.chapters)) throw new Error('项目文件格式不正确。');
-  const assets: Asset[] = array(t.assets,5000).map(value => {
+  const assets: Asset[] = array(t.assets,20000).map(value => {
     const a = record(value);
+    const source=record(a.source),sourceId=clean(source.id,100),sourceVersion=clean(source.version,100);
     return { id: clean(a.id, 100) || id(), name: clean(a.name, 512), kind: a.kind === 'video' ? 'video' : 'image',
       size: number(a.size), width: number(a.width), height: number(a.height), date: clean(a.date, 30),
       location: clean(a.location, 250), caption: clean(a.caption, 1000), selected: a.selected !== false,
       fingerprint: clean(a.fingerprint, 1000), blobKey: clean(a.blobKey, 150) || undefined,
       thumbnailKey: clean(a.thumbnailKey, 150) || undefined,
       src: typeof a.src === 'string' && /^\/images\/[a-z-]+\.jpg$/.test(a.src) ? a.src : undefined,
-      missing: a.missing === true, fit: a.fit === 'contain' ? 'contain' : 'cover', cropX: Math.min(100,number(a.cropX,50)), cropY: Math.min(100,number(a.cropY,50)) };
+      missing: a.missing === true, fit: a.fit === 'contain' ? 'contain' : 'cover', cropX: Math.min(100,number(a.cropX,50)), cropY: Math.min(100,number(a.cropY,50)),
+      source: ['local','baidu','legacy'].includes(String(source.kind))&&/^[A-Za-z0-9_-]+$/.test(sourceId)&&/^[A-Za-z0-9_-]+$/.test(sourceVersion)?{kind:source.kind as 'local'|'baidu'|'legacy',id:sourceId,version:sourceVersion,rootName:clean(source.rootName,300),path:clean(source.path,2000)}:undefined,
+      renderWidth:number(a.renderWidth)||undefined,renderHeight:number(a.renderHeight)||undefined };
   });
   if (new Set(assets.map(a => a.id)).size !== assets.length) throw new Error('素材编号重复，无法恢复项目。');
   const assetIds = new Set(assets.map(a => a.id));
   const chapters: Chapter[] = array(t.chapters, 300).map(value => {
     const c = record(value);
     return { id: clean(c.id, 100) || id(), title: clean(c.title, 300), body: clean(c.body, 100000),
-      assetIds: array(c.assetIds,5000).filter((a): a is string => typeof a === 'string' && assetIds.has(a)),
+      assetIds: array(c.assetIds,20000).filter((a): a is string => typeof a === 'string' && assetIds.has(a)),
       layout: (['balanced', 'album', 'journal'].includes(String(c.layout)) ? c.layout : 'balanced') as Layout, locked: c.locked === true,
       imageHeight: typeof c.imageHeight === 'number' ? Math.max(40,Math.min(110,c.imageHeight)) : undefined };
   });

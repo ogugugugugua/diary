@@ -5,6 +5,8 @@ export interface Asset {
   caption: string; selected: boolean; fingerprint: string;
   blobKey?: string; thumbnailKey?: string; src?: string; missing?: boolean;
   fit?: 'cover' | 'contain'; cropX?: number; cropY?: number;
+  source?: { kind: 'local' | 'baidu' | 'legacy'; id: string; version: string; rootName?: string; path?: string };
+  renderWidth?: number; renderHeight?: number;
 }
 export interface Fact { date: string; place: string; event: string; feeling: string; }
 export interface Memory {
@@ -19,6 +21,7 @@ export interface Trip {
   id: string; title: string; subtitle: string; startDate: string; endDate: string;
   coverId?: string; assets: Asset[]; memories: Memory[]; chapters: Chapter[];
   margin: number; binding: number; tone: string; createdAt: string; updatedAt: string; demo?: boolean;
+  storageRevision?: number;
 }
 export interface Provider { baseUrl: string; model: string; }
 export interface Settings { writer: Provider; speech: Provider; vision: boolean; }

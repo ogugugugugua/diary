@@ -1,3 +1,4 @@
+import { chronological, validDate, validOffset } from './itinerary';
 import type { Asset, Chapter, Fact, Layout, Memory, Trip } from './types';
 
 export const id = () => crypto.randomUUID();
@@ -12,7 +13,7 @@ export function createTrip(title: string, startDate = '', endDate = ''): Trip {
 }
 export function chaptersFromAssets(trip: Trip): Chapter[] {
   const groups = new Map<string, Asset[]>();
-  for (const asset of selectedAssets(trip)) {
+  for (const asset of chronological(selectedAssets(trip))) {
     const day = asset.date.slice(0, 10) || '待补充日期';
     groups.set(day, [...(groups.get(day) ?? []), asset]);
   }
@@ -28,7 +29,7 @@ export function mergeGeneratedChapters(previous: Chapter[], incoming: Chapter[])
     if (target < 0 && index < incoming.length && !used.has(index)) target = index;
     if (target >= 0) used.add(target);
     if (chapter.locked || target < 0) return chapter;
-    return { ...incoming[target], id: chapter.id, locked: false };
+    return { ...incoming[target], id: chapter.id, stopIds: chapter.stopIds, locked: false };
   });
   return [...result, ...incoming.filter((_, index) => !used.has(index))];
 }
@@ -43,7 +44,7 @@ export function validateTrip(input: unknown): Trip {
     const a = record(value);
     const source=record(a.source),sourceId=clean(source.id,100),sourceVersion=clean(source.version,100);
     return { id: clean(a.id, 100) || id(), name: clean(a.name, 512), kind: a.kind === 'video' ? 'video' : 'image',
-      size: number(a.size), width: number(a.width), height: number(a.height), date: clean(a.date, 30),
+      size: number(a.size), width: number(a.width), height: number(a.height), date: validDate(clean(a.date,30)) ? clean(a.date,30) : '', utcOffset: validOffset(a.utcOffset) ? a.utcOffset : undefined,
       location: clean(a.location, 250), caption: clean(a.caption, 1000), selected: a.selected !== false,
       fingerprint: clean(a.fingerprint, 1000), blobKey: clean(a.blobKey, 150) || undefined,
       thumbnailKey: clean(a.thumbnailKey, 150) || undefined,
@@ -54,11 +55,16 @@ export function validateTrip(input: unknown): Trip {
   });
   if (new Set(assets.map(a => a.id)).size !== assets.length) throw new Error('素材编号重复，无法恢复项目。');
   const assetIds = new Set(assets.map(a => a.id));
+  const assigned=new Set<string>();
+  const stops=array(t.stops,1000).map(value=>{const s=record(value);return {id:clean(s.id,100)||id(),title:clean(s.title,300),date:validDate(clean(s.date,30))?clean(s.date,30).slice(0,10):'',location:clean(s.location,250),story:clean(s.story,100000),assetIds:array(s.assetIds,20000).filter((a):a is string=>{if(typeof a!=='string'||!assetIds.has(a)||assigned.has(a))return false;assigned.add(a);return true;})};});
+  if(new Set(stops.map(s=>s.id)).size!==stops.length)throw new Error('行程站点编号重复。');
+  const stopIds=new Set(stops.map(s=>s.id));
   const chapters: Chapter[] = array(t.chapters, 300).map(value => {
     const c = record(value);
     return { id: clean(c.id, 100) || id(), title: clean(c.title, 300), body: clean(c.body, 100000),
       assetIds: array(c.assetIds,20000).filter((a): a is string => typeof a === 'string' && assetIds.has(a)),
       layout: (['balanced', 'album', 'journal'].includes(String(c.layout)) ? c.layout : 'balanced') as Layout, locked: c.locked === true,
+      stopIds: array(c.stopIds,1000).filter((s):s is string=>typeof s==='string'&&stopIds.has(s)),
       imageHeight: typeof c.imageHeight === 'number' ? Math.max(40,Math.min(110,c.imageHeight)) : undefined };
   });
   const memories: Memory[] = array(t.memories, 500).map(value => {
@@ -69,7 +75,7 @@ export function validateTrip(input: unknown): Trip {
       facts: array(m.facts, 200).map(value => { const f = record(value); return { date: clean(f.date, 30), place: clean(f.place, 300), event: clean(f.event, 3000), feeling: clean(f.feeling, 1000) } satisfies Fact; }) };
   });
   return { id: clean(t.id, 100) || id(), title: clean(t.title, 300), subtitle: clean(t.subtitle, 1000), startDate: clean(t.startDate, 30), endDate: clean(t.endDate, 30),
-    coverId: assetIds.has(String(t.coverId)) ? String(t.coverId) : undefined, assets, memories, chapters,
+    stops, coverId: assetIds.has(String(t.coverId)) ? String(t.coverId) : undefined, assets, memories, chapters,
     margin: Math.min(30, Math.max(12, number(t.margin, 20))), binding: Math.min(15, number(t.binding)), tone: clean(t.tone, 100) || '个人日记',
     createdAt: clean(t.createdAt, 40) || now(), updatedAt: clean(t.updatedAt, 40) || now(), demo: t.demo === true };
 }

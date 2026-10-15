@@ -1,7 +1,9 @@
 export type Layout = 'balanced' | 'album' | 'journal';
+export interface Stop { id: string; title: string; date: string; location: string; story: string; assetIds: string[]; }
 export interface Asset {
   id: string; name: string; kind: 'image' | 'video'; size: number;
   width: number; height: number; date: string; location: string;
+  utcOffset?: string;
   caption: string; selected: boolean; fingerprint: string;
   blobKey?: string; thumbnailKey?: string; src?: string; missing?: boolean;
   fit?: 'cover' | 'contain'; cropX?: number; cropY?: number;
@@ -15,10 +17,11 @@ export interface Memory {
 }
 export interface Chapter {
   id: string; title: string; body: string; assetIds: string[]; layout: Layout; locked: boolean;
-  imageHeight?: number;
+  imageHeight?: number; stopIds?: string[];
 }
 export interface Trip {
   id: string; title: string; subtitle: string; startDate: string; endDate: string;
+  stops?: Stop[];
   coverId?: string; assets: Asset[]; memories: Memory[]; chapters: Chapter[];
   margin: number; binding: number; tone: string; createdAt: string; updatedAt: string; demo?: boolean;
   storageRevision?: number;

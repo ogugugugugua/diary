@@ -10,6 +10,7 @@ export async function runAI(task:'extract'|'generate'|'test',data:unknown,settin
 }
 export function generationInput(trip:Trip){return {title:trip.title,tone:trip.tone,dates:[trip.startDate,trip.endDate],
   memories:trip.memories.filter(m=>m.confirmed).map(m=>({text:m.text,facts:m.facts,assetId:m.assetId})),
+  stops:trip.stops||[],
   assets:selectedAssets(trip).map(a=>({id:a.id,date:a.date,place:a.location,caption:a.caption,kind:a.kind})),
   existingChapters:trip.chapters.map(c=>({title:c.title,locked:c.locked}))};}
 export async function transcribe(file:Blob,settings:Settings,secrets:Secrets):Promise<string>{

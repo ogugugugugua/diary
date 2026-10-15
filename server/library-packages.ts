@@ -1,3 +1,4 @@
+import { remapStops } from '../src/itinerary';
 import { randomUUID, createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, readFile, stat, rename, writeFile, realpath, unlink } from 'node:fs/promises';
@@ -61,6 +62,7 @@ export async function restoreFolderPackage(library:MediaLibrary,directory:string
   trip.id=randomUUID();trip.demo=false;trip.updatedAt=new Date().toISOString();trip.coverId=assetIds.get(trip.coverId||'');
   trip.assets=trip.assets.map(a=>({...a,id:assetIds.get(a.id)!,source:originals.get(a.id)||a.source,blobKey:undefined,src:undefined,thumbnailKey:thumbnails.get(a.id),missing:!thumbnails.has(a.id)&&!originals.has(a.id)}));
   trip.memories=trip.memories.map(m=>({...m,id:memoryIds.get(m.id)!,assetId:assetIds.get(m.assetId||''),audioKey:audios.get(m.id)}));
+  remapStops(trip,assetIds);
   trip.chapters=trip.chapters.map(c=>({...c,id:randomUUID(),assetIds:c.assetIds.map(id=>assetIds.get(id)!).filter(Boolean)}));
   return library.saveTrip(trip);
 }

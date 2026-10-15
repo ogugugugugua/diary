@@ -1,3 +1,4 @@
+import { cameraDate, validOffset } from './itinerary';
 import { id } from './domain';
 import { getBlob } from './db';
 import type { Asset } from './types';
@@ -47,20 +48,20 @@ export async function readAsset(file: File): Promise<{asset: Asset; blobs: {key:
     fingerprint = `sha256:${Array.from(new Uint8Array(hash)).map(v => v.toString(16).padStart(2, '0')).join('')}`;
   } else fingerprint = `video:${file.name}:${file.size}:${file.lastModified}`;
   const assetId = id(), blobKey = `media-${assetId}`, thumbnailKey = `thumb-${assetId}`;
-  let width = 0, height = 0, renderWidth=0,renderHeight=0,thumbnail: Blob | undefined, date = '', location = '';
+  let width = 0, height = 0, renderWidth=0,renderHeight=0,thumbnail: Blob | undefined, date = '', location = '', utcOffset: string|undefined;
   if (video) {
     try { const frame = await videoFrame(file); thumbnail = frame.blob; width = renderWidth=frame.width; height = renderHeight=frame.height; } catch { /* Original remains usable; print selection waits for a decodable frame. */ }
   } else {
     const image = await imageBlob(file,3200); thumbnail = image.blob; width = image.width; height = image.height;renderWidth=image.renderWidth;renderHeight=image.renderHeight;
     try {
       const exifr=(await import('exifr')).default;
-      const metadata = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'latitude', 'longitude']);
+      const metadata = await exifr.parse(file, {pick:['DateTimeOriginal', 'CreateDate', 'OffsetTimeOriginal', 'latitude', 'longitude'],reviveValues:false});
       const shot = metadata?.DateTimeOriginal || metadata?.CreateDate;
-      if (shot instanceof Date && !Number.isNaN(shot.getTime())) date = `${shot.getFullYear()}-${String(shot.getMonth()+1).padStart(2,'0')}-${String(shot.getDate()).padStart(2,'0')}`;
+      date = cameraDate(shot); utcOffset = validOffset(metadata?.OffsetTimeOriginal) ? metadata.OffsetTimeOriginal : undefined;
       if (typeof metadata?.latitude === 'number' && typeof metadata?.longitude === 'number') location = `${metadata.latitude.toFixed(4)}, ${metadata.longitude.toFixed(4)}`;
     } catch { /* Missing EXIF is a normal case. */ }
   }
-  return {asset: {id: assetId, name:file.name, kind:video?'video':'image', size:file.size, width, height, date, location, caption:'', selected:!!thumbnail,
+  return {asset: {id: assetId, name:file.name, kind:video?'video':'image', size:file.size, width, height, date, utcOffset, location, caption:'', selected:!!thumbnail,
     fingerprint, blobKey, thumbnailKey:thumbnail ? thumbnailKey : undefined,renderWidth,renderHeight}, blobs: [{key:blobKey, blob:file}, ...(thumbnail ? [{key:thumbnailKey, blob:thumbnail}] : [])]};
 }
 let activePreviews=0;const waiting:(()=>void)[]=[],pendingPreviews=new Map<string,Promise<Blob|undefined>>();

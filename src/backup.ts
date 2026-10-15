@@ -1,3 +1,4 @@
+import { remapStops } from './itinerary';
 import type JSZip from 'jszip';
 import { getBlob } from './db';
 import { assetBlob } from './media';
@@ -58,6 +59,7 @@ export async function restoreProject(file:File):Promise<{trip:Trip;blobs:{key:st
   trip.id=id();trip.demo=false;trip.updatedAt=now();trip.coverId=oldAssets.get(trip.coverId||'');
   trip.assets=trip.assets.map(a=>({...a,id:oldAssets.get(a.id)!,blobKey:originals.get(a.id),thumbnailKey:thumbnails.get(a.id),source:undefined,src:undefined,missing:!originals.has(a.id)&&!thumbnails.has(a.id)}));
   trip.memories=trip.memories.map(m=>({...m,id:oldMemories.get(m.id)!,audioKey:audios.get(m.id),assetId:oldAssets.get(m.assetId||'')}));
+  remapStops(trip,oldAssets);
   trip.chapters=trip.chapters.map(c=>({...c,id:id(),assetIds:c.assetIds.map(a=>oldAssets.get(a)!).filter(Boolean)}));
   return {trip,blobs};
 }

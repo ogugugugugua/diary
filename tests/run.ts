@@ -6,3 +6,4 @@ import './db.test';
 import './library.test';
 
 import './itinerary.test';
+import './similarity.test';

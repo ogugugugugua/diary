@@ -1,0 +1,35 @@
+import {spawn} from 'node:child_process';
+const server=spawn(process.execPath,['--import','tsx','server/dev.ts'],{env:{...process.env,TRAVEL_DATA_DIR:'/tmp/diary-feature-tests'},stdio:['ignore','pipe','inherit']});
+await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('server startup timeout')),20000);server.stdout.on('data',data=>{if(data.toString().includes('行迹已启动')){clearTimeout(timer);resolve();}});server.on('error',reject);});
+import {chromium} from 'playwright-core';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--no-zygote','--single-process','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+await mkdir('test-results',{recursive:true});
+try {
+ await page.goto('http://localhost:5173/',{waitUntil:'networkidle'});
+ const trips=(await (await page.request.get('http://localhost:5173/api/library/trips')).json()).trips;
+ const trip=structuredClone(trips.find(t=>t.demo));trip.id=crypto.randomUUID();trip.title='增量功能验收 '+Date.now();trip.demo=false;trip.chapters=[];trip.stops=[];delete trip.storageRevision;
+ trip.assets=trip.assets.slice(0,3).map((a,i)=>({...a,date:`2026-10-02T08:00:0${i}`,location:'京都',selected:true}));
+ trip.assets[1].src=trip.assets[0].src;
+ assert.equal((await page.request.post('http://localhost:5173/api/library/trips',{data:{trip}})).ok(),true);
+ await page.reload({waitUntil:'networkidle'});await page.getByRole('button',{name:`打开${trip.title}`,exact:true}).click();await page.getByRole('button',{name:/1 整理素材/}).click();
+ await page.getByText('行程与故事 · 0 个站点',{exact:true}).click();await page.getByRole('button',{name:'按日期和地点补充站点',exact:true}).click();
+ await page.getByLabel('站点标题',{exact:true}).fill('京都散步');await page.getByLabel('这站的故事').fill('我们在京都慢慢散步。');
+ await page.getByRole('button',{name:'从站点追加章节',exact:true}).click();await page.getByText('已保存至本机',{exact:true}).waitFor();
+ await page.reload({waitUntil:'networkidle'});await page.getByRole('button',{name:`打开${trip.title}`,exact:true}).click();
+ await page.getByRole('button',{name:/3 编辑游记/}).click();assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),'我们在京都慢慢散步。');
+ await page.screenshot({path:'test-results/itinerary-editor.png',fullPage:true});
+ await page.getByRole('button',{name:/1 整理素材/}).click();
+ await page.getByText('精选与比较 · 已分析 0 张',{exact:true}).click();await page.getByRole('button',{name:'分析未索引照片',exact:true}).click();
+ await page.getByText('精选与比较 · 已分析 3 张',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'并排比较这一组',exact:true}).first().click();
+ const comparison=page.getByRole('dialog',{name:'并排选片'});await comparison.getByLabel(`评级${trip.assets[0].name}`,{exact:true}).selectOption('5');
+ await comparison.getByLabel(`标签${trip.assets[0].name}`,{exact:true}).fill('京都, 合影');await comparison.getByLabel('同步放大').focus();
+ await comparison.getByLabel('同步放大').fill('2');await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:'test-results/photo-comparison.png',fullPage:true});
+ await comparison.getByRole('button',{name:'关闭对话框'}).click();await page.getByLabel('最低评级').selectOption('5');await page.getByLabel('筛选标签').fill('合影');assert.equal(await page.locator('.asset-card').count(),1);
+ await page.getByText('已保存至本机',{exact:true}).waitFor();
+ assert.deepEqual(errors,[]);console.log('PASS: local visual grouping, original image comparison, ratings and tag filtering');console.log('PASS: itinerary grouping, story editing, chapter creation, persistent reload');
+} catch(e){await page.screenshot({path:'test-results/feature-failure.png',fullPage:true});throw e;}finally{await browser.close();server.kill();}

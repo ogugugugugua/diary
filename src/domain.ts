@@ -1,3 +1,4 @@
+import { validVisual } from './similarity';
 import { chronological, validDate, validOffset } from './itinerary';
 import type { Asset, Chapter, Fact, Layout, Memory, Trip } from './types';
 
@@ -46,6 +47,7 @@ export function validateTrip(input: unknown): Trip {
     return { id: clean(a.id, 100) || id(), name: clean(a.name, 512), kind: a.kind === 'video' ? 'video' : 'image',
       size: number(a.size), width: number(a.width), height: number(a.height), date: validDate(clean(a.date,30)) ? clean(a.date,30) : '', utcOffset: validOffset(a.utcOffset) ? a.utcOffset : undefined,
       location: clean(a.location, 250), caption: clean(a.caption, 1000), selected: a.selected !== false,
+      rating:Math.min(5,Math.floor(number(a.rating))),tags:[...new Set(array(a.tags,30).map(t=>clean(t,80)).filter(Boolean))],visual:validVisual(a.visual),
       fingerprint: clean(a.fingerprint, 1000), blobKey: clean(a.blobKey, 150) || undefined,
       thumbnailKey: clean(a.thumbnailKey, 150) || undefined,
       src: typeof a.src === 'string' && /^\/images\/[a-z-]+\.jpg$/.test(a.src) ? a.src : undefined,

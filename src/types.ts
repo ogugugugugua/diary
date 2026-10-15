@@ -1,9 +1,10 @@
+import type { VisualIndex } from './similarity';
 export type Layout = 'balanced' | 'album' | 'journal';
 export interface Stop { id: string; title: string; date: string; location: string; story: string; assetIds: string[]; }
 export interface Asset {
   id: string; name: string; kind: 'image' | 'video'; size: number;
   width: number; height: number; date: string; location: string;
-  utcOffset?: string;
+  utcOffset?: string; rating?: number; tags?: string[]; visual?: VisualIndex;
   caption: string; selected: boolean; fingerprint: string;
   blobKey?: string; thumbnailKey?: string; src?: string; missing?: boolean;
   fit?: 'cover' | 'contain'; cropX?: number; cropY?: number;

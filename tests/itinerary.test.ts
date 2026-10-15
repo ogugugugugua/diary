@@ -26,3 +26,18 @@ test('站点增量分组、拆分、章节精选与备份恢复保持关联',asy
   assert.equal(restored.stops![1].assetIds[0],restored.assets[2].id);
   assert.equal(validateTrip(restored).assets[0].date,'2026-10-02T08:00:00');
 });
+
+test('日期与时区边界：闰日、午夜、秒、缺失值与非法偏移',async()=>{
+ const {validOffset}=await import('../src/itinerary');
+ for(const date of ['2024-02-29','2026-12-31T23:59:59','2026-01-01T00:00'])assert.ok(validDate(date),date);
+ for(const date of ['','2026-02-29','2026-13-01','2026-01-00','2026-01-01T24:00','2026-01-01T00:60','2026-01-01T12:00:60','text'])assert.equal(validDate(date),false,date);
+ for(const offset of ['+14:00','-12:00','+05:30','+00:00'])assert.ok(validOffset(offset));
+ for(const offset of ['+14:01','+15:00','08:00','+8:00','-00:60',undefined])assert.equal(validOffset(offset),false);
+});
+test('站点未知信息不猜测，非法移动不丢素材，重复站点编号拒绝',()=>{
+ let trip=structuredClone(demoTrips[0]);trip.assets=trip.assets.slice(0,2).map(a=>({...a,date:'',location:''}));trip.stops=suggestStops(trip);
+ assert.equal(trip.stops.length,1);assert.equal(trip.stops[0].date,'');assert.equal(trip.stops[0].title,'待补充地点');
+ assert.deepEqual(assignToStop(trip,[trip.assets[0].id],'absent'),trip);
+ trip=assignToStop(trip,[trip.assets[0].id],'');assert.equal(trip.stops![0].assetIds.length,1);assert.equal(suggestStops(trip)[0].assetIds[0],trip.assets[0].id);
+ assert.throws(()=>validateTrip({...trip,stops:[trip.stops![0],trip.stops![0]]}),/编号重复/);
+});

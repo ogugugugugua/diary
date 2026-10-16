@@ -28,8 +28,8 @@ export interface Trip {
   storageRevision?: number;
 }
 export interface Provider { baseUrl: string; model: string; }
-export interface Settings { writer: Provider; speech: Provider; vision: boolean; }
-export interface Secrets { writerKey: string; speechKey: string; baiduToken: string; }
+export interface Settings { embedding?: Provider; writer: Provider; speech: Provider; vision: boolean; }
+export interface Secrets { embeddingKey?: string; writerKey: string; speechKey: string; baiduToken: string; }
 export interface TextBlock { type: 'text'; x: number; y: number; text: string; size: number; color?: string; }
 export interface ImageBlock { type: 'image'; x: number; y: number; width: number; height: number; assetId: string; }
 export interface Page { chapterId: string; title: string; cover?: boolean; blocks: (TextBlock | ImageBlock)[]; }

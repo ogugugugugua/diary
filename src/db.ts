@@ -6,7 +6,7 @@ export const openDatabase=legacy.openDatabase;
 export async function listTrips():Promise<Trip[]>{if(!isNativeStore())return legacy.listTrips();const {trips}=await nativeRequest<{trips:Trip[]}>('/trips');for(const trip of trips)revisions.set(trip.id,trip.storageRevision||0);return trips;}
 export async function getMeta<T>(key:string):Promise<T|undefined>{return isNativeStore()?(await nativeRequest<{value?:T}>('/meta?key='+encodeURIComponent(key))).value:legacy.getMeta<T>(key);}
 export async function setMeta(key:string,value:unknown):Promise<void>{if(!isNativeStore())return legacy.setMeta(key,value);await nativeRequest('/meta',{key,value});}
-export const saveSettings=(settings:Settings)=>setMeta('settings',{writer:{baseUrl:settings.writer.baseUrl,model:settings.writer.model},speech:{baseUrl:settings.speech.baseUrl,model:settings.speech.model},vision:settings.vision});
+export const saveSettings=(settings:Settings)=>setMeta('settings',{writer:{baseUrl:settings.writer.baseUrl,model:settings.writer.model},speech:{baseUrl:settings.speech.baseUrl,model:settings.speech.model},vision:settings.vision,embedding:settings.embedding?{baseUrl:settings.embedding.baseUrl,model:settings.embedding.model}:undefined});
 export async function saveTrip(trip:Trip,blobs:{key:string;blob:Blob}[]=[]):Promise<void>{
   if(!isNativeStore())return legacy.saveTrip(trip,blobs);
   for(const item of blobs)await putNativeBlob(item.key,item.blob,item.key.startsWith('media-')?'original':'retained');

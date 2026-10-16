@@ -8,3 +8,4 @@ import './library.test';
 import './itinerary.test';
 import './similarity.test';
 import './auto-layout.test';
+import './semantic.test';

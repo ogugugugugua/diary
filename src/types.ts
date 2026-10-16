@@ -9,6 +9,7 @@ export interface Asset {
   blobKey?: string; thumbnailKey?: string; src?: string; missing?: boolean;
   fit?: 'cover' | 'contain'; cropX?: number; cropY?: number;
   source?: { kind: 'local' | 'baidu' | 'legacy'; id: string; version: string; rootName?: string; path?: string };
+  videoUrl?: string; videoFrameTime?: number;
   renderWidth?: number; renderHeight?: number;
 }
 export interface Fact { date: string; place: string; event: string; feeling: string; }
@@ -32,7 +33,8 @@ export interface Settings { embedding?: Provider; writer: Provider; speech: Prov
 export interface Secrets { embeddingKey?: string; writerKey: string; speechKey: string; baiduToken: string; }
 export interface TextBlock { type: 'text'; x: number; y: number; text: string; size: number; color?: string; }
 export interface ImageBlock { type: 'image'; x: number; y: number; width: number; height: number; assetId: string; }
-export interface Page { chapterId: string; title: string; cover?: boolean; blocks: (TextBlock | ImageBlock)[]; }
+export interface QRBlock { type: 'qr'; x: number; y: number; width: number; height: number; assetId: string; url: string; }
+export interface Page { chapterId: string; title: string; cover?: boolean; blocks: (TextBlock | ImageBlock | QRBlock)[]; }
 export const defaultSettings: Settings = {
   writer: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
   speech: { baseUrl: 'https://api.openai.com/v1', model: 'whisper-1' }, vision: false,

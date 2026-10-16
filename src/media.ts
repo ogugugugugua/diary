@@ -1,3 +1,4 @@
+import {frameTime} from './video-link';
 import { cameraDate, validOffset } from './itinerary';
 import { id } from './domain';
 import { getBlob } from './db';
@@ -23,18 +24,18 @@ function mediaEvent(video: HTMLVideoElement, event: string): Promise<void> {
     video.addEventListener(event, success, {once:true}); video.addEventListener('error', error, {once:true});
   });
 }
-export async function videoFrame(blob: Blob|string, time = 0.5): Promise<{blob: Blob; width: number; height: number; duration: number}> {
+export async function videoFrame(blob: Blob|string, time = 0.5): Promise<{blob: Blob; width: number; height: number; duration: number; time: number}> {
   const src = typeof blob==='string'?blob:URL.createObjectURL(blob), video = document.createElement('video');
   video.muted = true; video.preload = 'auto'; video.playsInline = true;
   try {
     const ready = mediaEvent(video, 'loadeddata'); video.src = src; video.load(); await ready;
-    const seek = Math.max(0, Math.min(time, Math.max(0, video.duration - 0.05)));
+    const seek = frameTime(time, video.duration);
     if (seek > 0) { const seeking = mediaEvent(video, 'seeked'); video.currentTime = seek; await seeking; }
     const width = video.videoWidth, height = video.videoHeight, scale = Math.min(1, 2400 / Math.max(width, height));
     const canvas = document.createElement('canvas'); canvas.width = Math.round(width * scale); canvas.height = Math.round(height * scale);
     canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
     const frame = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('无法提取视频画面。')), 'image/jpeg', 0.92));
-    return {blob: frame, width: canvas.width, height: canvas.height, duration: video.duration};
+    return {blob: frame, width: canvas.width, height: canvas.height, duration: video.duration, time:seek};
   } finally { video.removeAttribute('src'); video.load(); if(typeof blob!=='string')URL.revokeObjectURL(src); }
 }
 export async function readAsset(file: File): Promise<{asset: Asset; blobs: {key: string; blob: Blob}[]}> {
@@ -48,9 +49,9 @@ export async function readAsset(file: File): Promise<{asset: Asset; blobs: {key:
     fingerprint = `sha256:${Array.from(new Uint8Array(hash)).map(v => v.toString(16).padStart(2, '0')).join('')}`;
   } else fingerprint = `video:${file.name}:${file.size}:${file.lastModified}`;
   const assetId = id(), blobKey = `media-${assetId}`, thumbnailKey = `thumb-${assetId}`;
-  let width = 0, height = 0, renderWidth=0,renderHeight=0,thumbnail: Blob | undefined, date = '', location = '', utcOffset: string|undefined;
+  let width = 0, height = 0, renderWidth=0,renderHeight=0,thumbnail: Blob | undefined, date = '', location = '', utcOffset: string|undefined,videoFrameTime:number|undefined;
   if (video) {
-    try { const frame = await videoFrame(file); thumbnail = frame.blob; width = renderWidth=frame.width; height = renderHeight=frame.height; } catch { /* Original remains usable; print selection waits for a decodable frame. */ }
+    try { const frame = await videoFrame(file); thumbnail = frame.blob; videoFrameTime=frame.time; width = renderWidth=frame.width; height = renderHeight=frame.height; } catch { /* Original remains usable; print selection waits for a decodable frame. */ }
   } else {
     const image = await imageBlob(file,3200); thumbnail = image.blob; width = image.width; height = image.height;renderWidth=image.renderWidth;renderHeight=image.renderHeight;
     try {
@@ -62,7 +63,7 @@ export async function readAsset(file: File): Promise<{asset: Asset; blobs: {key:
     } catch { /* Missing EXIF is a normal case. */ }
   }
   return {asset: {id: assetId, name:file.name, kind:video?'video':'image', size:file.size, width, height, date, utcOffset, location, caption:'', selected:!!thumbnail,
-    fingerprint, blobKey, thumbnailKey:thumbnail ? thumbnailKey : undefined,renderWidth,renderHeight}, blobs: [{key:blobKey, blob:file}, ...(thumbnail ? [{key:thumbnailKey, blob:thumbnail}] : [])]};
+    fingerprint, videoFrameTime, blobKey, thumbnailKey:thumbnail ? thumbnailKey : undefined,renderWidth,renderHeight}, blobs: [{key:blobKey, blob:file}, ...(thumbnail ? [{key:thumbnailKey, blob:thumbnail}] : [])]};
 }
 let activePreviews=0;const waiting:(()=>void)[]=[],pendingPreviews=new Map<string,Promise<Blob|undefined>>();
 async function limitedPreview<T>(task:()=>Promise<T>):Promise<T>{if(activePreviews>=2)await new Promise<void>(resolve=>waiting.push(resolve));else activePreviews++;try{return await task();}finally{const next=waiting.shift();if(next)next();else activePreviews--;}}

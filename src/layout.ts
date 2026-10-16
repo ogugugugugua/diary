@@ -1,3 +1,4 @@
+import {videoLink} from './video-link';
 import type { Trip, Page, TextBlock, Asset } from './types';
 export const MM = 72 / 25.4;
 export type Measure = (text: string, size: number) => number;
@@ -20,8 +21,10 @@ export function paginate(trip:Trip,measure:Measure=approximateMeasure):Page[] {
   const text=(x:number,y:number,value:string,size:number,color='#263e35'):TextBlock=>({type:'text',x,y,text:value,size,color});
   const assets = new Map(trip.assets.map(a=>[a.id,a]));
   const cover=assets.get(trip.coverId||'') || trip.assets.find(a=>a.selected);
+  const coverURL=cover?.kind==='video'?videoLink(cover.videoUrl):undefined;
   const coverPage:Page={chapterId:'cover',title:'封面',cover:true,blocks:[text(left,margin,'XINGJI  /  FAMILY TRAVEL JOURNAL',8,'#7c837b')]};
-  if(cover && !cover.missing && (cover.kind==='image'||cover.thumbnailKey))coverPage.blocks.push({type:'image',x:left,y:margin+12,width,height:142,assetId:cover.id});
+  if(cover && !cover.missing && (cover.kind==='image'||cover.thumbnailKey))coverPage.blocks.push({type:'image',x:left,y:margin+12,width,height:coverURL?104:142,assetId:cover.id});
+  if(coverURL&&cover&&!cover.missing&&cover.thumbnailKey){coverPage.blocks.push({type:'qr',x:left,y:margin+122,width:32,height:32,assetId:cover.id,url:coverURL},text(left+36,margin+132,'扫码观看视频',9));}
   const titles=wrapText(trip.title,width,25,measure);
   titles.slice(0,3).forEach((line,i)=>coverPage.blocks.push(text(left,margin+165+i*13,line,25)));
   wrapText(trip.subtitle,width,11,measure).slice(0,3).forEach((line,i)=>coverPage.blocks.push(text(left,margin+210+i*6,line,11,'#70776c')));
@@ -44,14 +47,17 @@ export function paginate(trip:Trip,measure:Measure=approximateMeasure):Page[] {
         const columns=chapter.layout==='journal'||batch.length===1?1:2;
         const cellWidth=(width-(columns-1)*5)/columns,rows=Math.ceil(batch.length/columns);
         const defaultHeight=adaptive?Math.min(perPage===4?68:110,Math.max(40,cellWidth*batch.reduce((sum,a)=>sum+(a.width>0&&a.height>0?a.height/a.width:.66),0)/batch.length)):chapter.layout==='album'?62:chapter.layout==='journal'?68:86;
-        const photoHeight=Math.min((bottom-y-2)/rows-16,chapter.layout==='album'?75:110,Math.max(40,chapter.imageHeight??defaultHeight));
+        const rowGap=batch.some(a=>a.kind==='video'&&videoLink(a.videoUrl))?54:16;
+        const photoHeight=Math.min((bottom-y-2)/rows-rowGap,chapter.layout==='album'?75:110,Math.max(40,chapter.imageHeight??defaultHeight));
         batch.forEach((asset,index)=>{
-          const row=Math.floor(index/columns),x=left+(index%columns)*(cellWidth+5),rowY=y+row*(photoHeight+16);
+          const row=Math.floor(index/columns),x=left+(index%columns)*(cellWidth+5),rowY=y+row*(photoHeight+rowGap);
           page.blocks.push({type:'image',x,y:rowY,width:cellWidth,height:photoHeight,assetId:asset.id});
+          const url=asset.kind==='video'?videoLink(asset.videoUrl):undefined;
+          if(url){page.blocks.push({type:'qr',x,y:rowY+photoHeight+14,width:32,height:32,assetId:asset.id,url},text(x+34,rowY+photoHeight+24,'扫码观看',8),text(x+34,rowY+photoHeight+29,'视频',8));}
           const caption=wrapText(asset.caption||asset.name,cellWidth,8,measure).slice(0,2);
           caption.forEach((line,i)=>page.blocks.push(text(x,rowY+photoHeight+3+i*4,line,8,'#787d71')));
         });
-        y+=Math.ceil(batch.length/columns)*(photoHeight+16)+2;
+        y+=Math.ceil(batch.length/columns)*(photoHeight+rowGap)+2;
       }
       while(lineIndex<lines.length && y+6<=bottom) {
         const line=lines[lineIndex++];if(line)page.blocks.push(text(left,y,line,11));y+=line?6.3:4;
@@ -69,6 +75,7 @@ export function printWarnings(trip:Trip,pages:Page[]):{assetId?:string;message:s
     const ratios=[(asset.renderWidth||asset.width)/(block.width/25.4),(asset.renderHeight||asset.height)/(block.height/25.4)],dpi=asset.fit==='contain'?Math.max(...ratios):Math.min(...ratios);
     if(!seen.has(asset.id)&&dpi<150)warnings.push({assetId:asset.id,message:`「${asset.name}」在当前版式下约${Math.round(dpi)} DPI，建议换用更清晰的原图或缩小尺寸。`});
     if(!page.cover&&!captionSeen.has(asset.id)){if(wrapText(asset.caption||asset.name,block.width,8).length>2)warnings.push({assetId:asset.id,message:`「${asset.name}」的图注超过两行，页面仅显示前两行，建议缩短图注或把故事放入正文。`});captionSeen.add(asset.id);}
+    if(!seen.has(asset.id)&&asset.kind==='video')warnings.push({assetId:asset.id,message:asset.videoUrl?`「${asset.name}」含视频二维码，请确认链接长期有效且读者有观看权限。`:`「${asset.name}」只打印静帧；填写视频观看链接后可附二维码。`});
     seen.add(asset.id);
   }
   const referenced=new Set([trip.coverId,...trip.chapters.flatMap(c=>c.assetIds)]);

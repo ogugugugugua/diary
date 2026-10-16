@@ -1,3 +1,4 @@
+import {qrSymbol} from './video-link';
 import type { PDFImage } from 'pdf-lib';
 import { assetBlob, imageBlob } from './media';
 import { paginate, MM, type Measure } from './layout';
@@ -27,6 +28,10 @@ export async function exportPDF(trip:Trip,pages:Page[],progress?:(value:string)=
       if(block.type==='text'){
         const color=block.color||'#263e35';const parts=[1,3,5].map(offset=>parseInt(color.slice(offset,offset+2),16)/255);
         page.drawText(block.text,{x:block.x*MM,y:(297-block.y)*MM-block.size*0.88,size:block.size,font,color:rgb(parts[0],parts[1],parts[2])});
+      }else if(block.type==='qr'){
+        const symbol=qrSymbol(block.url),cell=block.width*MM/symbol.size,x=block.x*MM,top=(297-block.y)*MM;
+        page.drawRectangle({x,y:top-block.height*MM,width:block.width*MM,height:block.height*MM,color:rgb(1,1,1)});
+        for(const r of symbol.rects)page.drawRectangle({x:x+r.x*cell,y:top-(r.y+1)*cell,width:r.width*cell,height:cell,color:rgb(0,0,0)});
       }else{
         let image=images.get(block.assetId);
         if(!image){const asset=trip.assets.find(a=>a.id===block.assetId);if(!asset)throw new Error('页面引用的素材不存在。');

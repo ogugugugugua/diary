@@ -8,7 +8,7 @@
 | 选片 | 哈希距离、颜色/比例排除、失效索引、完整时刻连拍、2万张相同图、非法索引、评级范围 | 标签去重、旧项目默认值、备份保留、并排放大、实际图片索引 | similarity.test、library.test、features-browser |
 | 自动排版 | 3种密度、极端比例、单双图、长正文、边距与装订48组组合、非法/不可能页数 | 全文全图保留、锁定保护、手工顺序、应用/撤销/重做、实际A4 PDF | auto-layout.test、features-browser |
 | 语义检索 | 图片描述与向量HTTP、空/零/畸形/超大向量、维度变化、阈值、2万范围、前100排名、401/超时 | 缓存、来源/模型隔离、逐项失败重试、无半成品、密钥不落盘、地点筛选、刷新恢复 | semantic.test、features-browser（可控模型服务） |
-| 视频二维码 | 待实现 | 待实现 | 待实现 |
+| 视频二维码 | URL/500字节/Unicode/临时签名、时间零值/片尾/非法时长、二维码白边与独立解码、72组排版 | SQLite与JSON/文件夹恢复、视频刷新保留、实际PDF封面/正文解码 | video-link.test、library.test、video-browser |
 
 既有36项回归继续执行，覆盖缓存、10 GiB文件Range、访问隔离、断传、文件变更、存储冲突、备份损坏、中文分页和模型/网盘错误处理。功能浏览器脚本自启服务并使用独立测试目录，Chromium路径由CHROMIUM_PATH指定。
 
@@ -21,6 +21,8 @@ npm ci
 CHROMIUM_PATH=/path/to/chromium npm run verify
 ```
 
-`verify`依次执行类型检查、全部自动化测试、正式构建和全部浏览器回归。浏览器部分需要Chromium和FFmpeg，统一运行器自动启动本地服务并使用独立测试资料库。用例失败时立即失败退出，不把跳过当作通过。
+`verify`依次执行类型检查、全部自动化测试、正式构建和全部浏览器回归。浏览器部分需要Chromium、FFmpeg和Poppler（pdftoppm），统一运行器自动启动本地服务并使用独立测试资料库。用例失败时立即失败退出，不把跳过当作通过。
 
 `tests/run-browser.mjs`依次运行原有完整游记、视频、存储回归及新增功能验收；可传具体脚本路径定位失败。多浏览器上下文测试不能使用Chromium的single-process模式。
+
+GitHub Actions 的 `Full regression` 在每次main推送及PR上执行同一入口，并保留7天测试产物。新增需求需提交用例，完成后运行全量 `npm run verify`；不得只运行新增测试或把外部服务模拟结果当作真实服务验收。

@@ -1,3 +1,4 @@
+import {VideoQR} from './VideoQR';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ImageOff, X } from 'lucide-react';
 import type { Asset, Page, Trip } from '../types';
@@ -21,7 +22,7 @@ export function AssetPicture({asset,className='',style,print=false}:{asset?:Asse
 function PaperImage({asset,style}:{asset?:Asset;style:React.CSSProperties}){return <AssetPicture asset={asset} className="paper-image" style={style} print/>;}
 export function Paper({page,trip,scale=0.65}:{page:Page;trip:Trip;scale?:number}){
   return <div className="paper-shell" style={{width:`${210*scale}mm`,height:`${297*scale}mm`}}><div className="paper" style={{transform:`scale(${scale})`}}>
-    {page.blocks.map((block,index)=>block.type==='text'?<div key={index} className="paper-text" style={{left:`${block.x}mm`,top:`${block.y}mm`,fontSize:`${block.size}pt`,color:block.color}}>{block.text}</div>:<PaperImage key={index} asset={trip.assets.find(a=>a.id===block.assetId)} style={{left:`${block.x}mm`,top:`${block.y}mm`,width:`${block.width}mm`,height:`${block.height}mm`}}/>)}
+    {page.blocks.map((block,index)=>block.type==='text'?<div key={index} className="paper-text" style={{left:`${block.x}mm`,top:`${block.y}mm`,fontSize:`${block.size}pt`,color:block.color}}>{block.text}</div>:block.type==='qr'?<VideoQR key={index} url={block.url} style={{position:'absolute',left:`${block.x}mm`,top:`${block.y}mm`,width:`${block.width}mm`,height:`${block.height}mm`}}/>:<PaperImage key={index} asset={trip.assets.find(a=>a.id===block.assetId)} style={{left:`${block.x}mm`,top:`${block.y}mm`,width:`${block.width}mm`,height:`${block.height}mm`}}/>)}
   </div></div>;
 }
 export function ResponsivePaper({page,trip}:{page:Page;trip:Trip}){

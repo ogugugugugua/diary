@@ -1,0 +1,30 @@
+name: Full regression
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg poppler-utils
+      - run: npx playwright-core install --with-deps chromium
+      - name: Locate Chromium
+        run: node --input-type=module -e 'import {chromium} from "playwright-core"; console.log("CHROMIUM_PATH=" + chromium.executablePath())' >> "$GITHUB_ENV"
+      - run: npm run verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-results
+          path: test-results/
+          retention-days: 7

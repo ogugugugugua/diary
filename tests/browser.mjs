@@ -8,10 +8,10 @@ await mkdir('test-results',{recursive:true});
 const fixtureTitle='测试家庭旅行-'+Date.now();
 const source=await mkdtemp('/tmp/xingji-browser-source-');
 const executablePath=process.env.CHROMIUM_PATH||'/usr/bin/chromium';
-const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--no-zygote','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});
 const page=await context.newPage(),errors=[];
-page.on('pageerror',error=>errors.push(error.message));
+page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);page.on('pageerror',error=>errors.push(error.message));
 let rejectAI=false,aiCalls=0,cloudCalls=0;
 await page.route('**/api/ai',async route=>{
   aiCalls++;const input=route.request().postDataJSON();
@@ -62,4 +62,4 @@ try{
   const mobile=await context.newPage({viewport:{width:390,height:844}});await mobile.goto('http://localhost:5173/',{waitUntil:'networkidle'});await mobile.locator('.library-hero').waitFor();assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));await mobile.screenshot({path:'test-results/mobile.png',fullPage:true});await mobile.close();
   assert.deepEqual(errors,[]);assert.ok(aiCalls>=4&&cloudCalls>=1);
   console.log(JSON.stringify({result:'passed',checks:['创建旅行','批量照片去重','修改拍摄信息','回忆确认','首次配置模型时保留录音','语音转写与原始录音保存','模型初稿预览','锁定章节保护','撤销重做','刷新恢复','A4中文PDF下载','文件夹原件备份恢复','网盘目录与引用登记（模拟响应）','轻量恢复与原件内容核验','凭据不持久保存','失败连接状态','搜索','手机布局'],pages:pdf.getPageCount(),errors}));
-}catch(error){await page.screenshot({path:'test-results/failure.png',fullPage:true});console.error('浏览器验收未通过：',error.message);throw error;}finally{await browser.close();}
+}catch(error){await page.screenshot({path:'test-results/failure.png',fullPage:true}).catch(()=>{});console.error('浏览器验收未通过：',error.message);throw error;}finally{await browser.close();}

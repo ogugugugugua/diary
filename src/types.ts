@@ -1,5 +1,5 @@
 import type { VisualIndex } from './similarity';
-export type Layout = 'balanced' | 'album' | 'journal';
+export type Layout = 'balanced' | 'album' | 'journal' | 'adaptive';
 export interface Stop { id: string; title: string; date: string; location: string; story: string; assetIds: string[]; }
 export interface Asset {
   id: string; name: string; kind: 'image' | 'video'; size: number;
@@ -18,7 +18,7 @@ export interface Memory {
 }
 export interface Chapter {
   id: string; title: string; body: string; assetIds: string[]; layout: Layout; locked: boolean;
-  imageHeight?: number; stopIds?: string[];
+  density?: 'spacious' | 'balanced' | 'compact'; imageHeight?: number; stopIds?: string[];
 }
 export interface Trip {
   id: string; title: string; subtitle: string; startDate: string; endDate: string;

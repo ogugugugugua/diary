@@ -8,9 +8,9 @@ const source=await mkdtemp('/tmp/xingji-reference-source-'),title='目录引用�
 const photo=await readFile('public/images/lake.jpg');await writeFile(source+'/photo.jpg',photo);
 execFileSync('ffmpeg',['-y','-f','lavfi','-i','color=c=red:s=640x360:d=1','-f','lavfi','-i','color=c=blue:s=640x360:d=1','-filter_complex','[0:v][1:v]concat=n=2:v=1:a=0[v]','-map','[v]','-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',source+'/video.mp4'],{stdio:'ignore'});
 const large=await open(source+'/video.mp4','r+');await large.truncate(2*1024**3);await large.close();
-const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--no-zygote','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[];
-page.on('pageerror',e=>errors.push(e.message));
+page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);page.on('pageerror',e=>errors.push(e.message));
 const state=async()=>(await(await page.request.get('http://localhost:5173/api/library/state')).json());
 const trips=async()=>(await(await page.request.get('http://localhost:5173/api/library/trips')).json()).trips;
 try{
@@ -36,4 +36,4 @@ try{
   const offline=moved+'-offline';await rename(moved,offline);await page.getByRole('button',{name:'旅行库',exact:false}).first().click();await page.getByRole('button',{name:`打开${legacyTitle}`,exact:true}).click();await page.waitForFunction(()=>Array.from(document.querySelectorAll('.editor-canvas .paper img')).some(i=>i.naturalWidth>0));assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),'旧浏览器里的回忆会迁移到资料库。');
   await page.screenshot({path:'test-results/storage-offline.png',fullPage:true});assert.deepEqual(errors,[]);
   console.log(JSON.stringify({result:'passed',checks:['2 GB MP4目录引用不复制','引用视频原片选帧','缓存清理保留游记画面','目录搬家后继续编辑','不同浏览器共享本机资料库','小体积文件夹备份','旧IndexedDB文字画面迁移','流式核验并批量关联旧副本','核验完成后清理旧浏览器数据','原目录离线后继续阅读'],errors}));
-}catch(error){await page.screenshot({path:'test-results/storage-failure.png',fullPage:true});throw error;}finally{await browser.close();}
+}catch(error){await page.screenshot({path:'test-results/storage-failure.png',fullPage:true}).catch(()=>{});throw error;}finally{await browser.close();}

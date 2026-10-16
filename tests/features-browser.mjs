@@ -3,10 +3,11 @@ const server=spawn(process.execPath,['--import','tsx','server/dev.ts'],{env:{...
 await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('server startup timeout')),20000);server.stdout.on('data',data=>{if(data.toString().includes('行迹已启动')){clearTimeout(timer);resolve();}});server.on('error',reject);});
 import {chromium} from 'playwright-core';
 import assert from 'node:assert/strict';
-import {mkdir} from 'node:fs/promises';
-const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--no-zygote','--single-process','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+import {mkdir,readFile} from 'node:fs/promises';
+import {PDFDocument} from 'pdf-lib';
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--no-zygote','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
-page.on('pageerror',e=>errors.push(e.message));
+page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);page.on('pageerror',e=>errors.push(e.message));
 await mkdir('test-results',{recursive:true});
 try {
  await page.goto('http://localhost:5173/',{waitUntil:'networkidle'});
@@ -31,5 +32,17 @@ try {
  await comparison.getByLabel('同步放大').fill('2');await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:'test-results/photo-comparison.png',fullPage:true});
  await comparison.getByRole('button',{name:'关闭对话框'}).click();await page.getByLabel('最低评级').selectOption('5');await page.getByLabel('筛选标签').fill('合影');assert.equal(await page.locator('.asset-card').count(),1);
  await page.getByText('已保存至本机',{exact:true}).waitFor();
- assert.deepEqual(errors,[]);console.log('PASS: local visual grouping, original image comparison, ratings and tag filtering');console.log('PASS: itinerary grouping, story editing, chapter creation, persistent reload');
-} catch(e){await page.screenshot({path:'test-results/feature-failure.png',fullPage:true});throw e;}finally{await browser.close();server.kill();}
+ await page.getByRole('button',{name:/3 编辑游记/}).click();
+ const originalBody=await page.getByLabel('正文',{exact:true}).inputValue();await page.getByRole('button',{name:'锁定章节',exact:true}).click();
+ await page.getByRole('button',{name:'新增章节',exact:true}).click();await page.getByLabel('正文',{exact:true}).fill('人工撰写的第二章。');
+ await page.getByRole('button',{name:'自动排版',exact:true}).click();const layout=page.getByRole('dialog',{name:'自动排版，先比较再应用'});
+ await layout.getByLabel('目标总页数（含封面）').fill('1');await layout.getByRole('button',{name:'推荐最接近的版式'}).click();await layout.getByRole('button',{name:'应用所选版式'}).click();
+ assert.equal(await page.getByLabel('页面模板').inputValue(),'adaptive');assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),'人工撰写的第二章。');
+ await page.getByRole('button',{name:'撤销',exact:true}).click();assert.equal(await page.getByLabel('页面模板').inputValue(),'balanced');await page.getByTitle('重做',{exact:true}).click();
+ await page.locator('.chapter-select').first().click();assert.equal(await page.getByLabel('正文',{exact:true}).inputValue(),originalBody);assert.equal(await page.getByLabel('页面模板').inputValue(),'balanced');
+ await page.getByText('已保存至本机',{exact:true}).waitFor();await page.screenshot({path:'test-results/auto-layout.png',fullPage:true});
+ const downloadPromise=page.waitForEvent('download',{timeout:90000});await page.locator('.trip-heading').getByRole('button',{name:'导出PDF',exact:true}).click();
+ const review=page.getByRole('dialog',{name:'导出前，再检查一下'});await Promise.race([review.waitFor().then(()=>review.getByRole('button',{name:'仍然导出PDF'}).click()),downloadPromise]);
+ const download=await downloadPromise;await download.saveAs('test-results/feature-journal.pdf');const pdf=await PDFDocument.load(await readFile('test-results/feature-journal.pdf'));assert.ok(pdf.getPageCount()>=3);assert.ok(Math.abs(pdf.getPage(0).getSize().width-595.28)<.1);
+ assert.deepEqual(errors,[]);console.log('PASS: actual A4 PDF download');console.log('PASS: layout candidates, impossible target, apply, undo/redo and locked chapter protection');console.log('PASS: local visual grouping, original image comparison, ratings and tag filtering');console.log('PASS: itinerary grouping, story editing, chapter creation, persistent reload');
+} catch(e){await page.screenshot({path:'test-results/feature-failure.png',fullPage:true}).catch(()=>{});throw e;}finally{await browser.close();server.kill();}

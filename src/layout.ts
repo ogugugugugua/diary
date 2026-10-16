@@ -30,19 +30,21 @@ export function paginate(trip:Trip,measure:Measure=approximateMeasure):Page[] {
   for(const chapter of trip.chapters) {
     const selected=chapter.assetIds.map(a=>assets.get(a)).filter((a):a is Asset=>!!a&&a.selected&&!a.missing&&(a.kind==='image'||!!a.thumbnailKey));
     const lines=wrapText(chapter.body,width,11,measure);
-    const perPage=chapter.layout==='album'?4:chapter.layout==='journal'?1:2;
+    const adaptive=chapter.layout==='adaptive';
+    const perPage=adaptive?(chapter.density==='compact'?4:chapter.density==='spacious'?1:2):chapter.layout==='album'?4:chapter.layout==='journal'?1:2;
     let photoIndex=0,lineIndex=0,first=true;
     do {
       const page:Page={chapterId:chapter.id,title:chapter.title,blocks:[text(left,12,trip.title,8,'#898d82')]};
       let y=margin+10;
       const heading=wrapText(first?chapter.title:`${chapter.title} · 续`,width,17,measure).slice(0,3);
       heading.forEach(line=>{page.blocks.push(text(left,y,line,17));y+=9;}); y+=5;
-      const batch=selected.slice(photoIndex,photoIndex+perPage);photoIndex+=batch.length;
+      const firstAsset=selected[photoIndex],wide=adaptive&&firstAsset&&firstAsset.width/Math.max(1,firstAsset.height)>1.8;
+      const batch=selected.slice(photoIndex,photoIndex+(wide?1:perPage));photoIndex+=batch.length;
       if(batch.length) {
         const columns=chapter.layout==='journal'||batch.length===1?1:2;
-        const defaultHeight=chapter.layout==='album'?62:chapter.layout==='journal'?68:86;
-        const photoHeight=Math.min(chapter.layout==='album'?75:110,Math.max(40,chapter.imageHeight??defaultHeight));
-        const cellWidth=(width-(columns-1)*5)/columns;
+        const cellWidth=(width-(columns-1)*5)/columns,rows=Math.ceil(batch.length/columns);
+        const defaultHeight=adaptive?Math.min(perPage===4?68:110,Math.max(40,cellWidth*batch.reduce((sum,a)=>sum+(a.width>0&&a.height>0?a.height/a.width:.66),0)/batch.length)):chapter.layout==='album'?62:chapter.layout==='journal'?68:86;
+        const photoHeight=Math.min((bottom-y-2)/rows-16,chapter.layout==='album'?75:110,Math.max(40,chapter.imageHeight??defaultHeight));
         batch.forEach((asset,index)=>{
           const row=Math.floor(index/columns),x=left+(index%columns)*(cellWidth+5),rowY=y+row*(photoHeight+16);
           page.blocks.push({type:'image',x,y:rowY,width:cellWidth,height:photoHeight,assetId:asset.id});

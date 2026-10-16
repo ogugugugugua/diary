@@ -68,7 +68,11 @@ npm run dev
 npm run check
 npm test
 npm run build
+# 完整回归（需 Chromium 与 FFmpeg）
+CHROMIUM_PATH=/path/to/chromium npm run verify
 ```
+
+增量功能与测试覆盖见 [交付记录](docs/feature-delivery.md) 和 [测试矩阵](docs/test-matrix.md)。
 
 浏览器端验收脚本需要已经安装的 Chromium 和 FFmpeg；请用独立的测试资料库启动应用，以免验收项目混入家庭旅行库：
 

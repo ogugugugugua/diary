@@ -65,7 +65,8 @@ export function validateTrip(input: unknown): Trip {
     const c = record(value);
     return { id: clean(c.id, 100) || id(), title: clean(c.title, 300), body: clean(c.body, 100000),
       assetIds: array(c.assetIds,20000).filter((a): a is string => typeof a === 'string' && assetIds.has(a)),
-      layout: (['balanced', 'album', 'journal'].includes(String(c.layout)) ? c.layout : 'balanced') as Layout, locked: c.locked === true,
+      layout: (['balanced', 'album', 'journal', 'adaptive'].includes(String(c.layout)) ? c.layout : 'balanced') as Layout, locked: c.locked === true,
+      density:c.density==='spacious'||c.density==='compact'?c.density:'balanced',
       stopIds: array(c.stopIds,1000).filter((s):s is string=>typeof s==='string'&&stopIds.has(s)),
       imageHeight: typeof c.imageHeight === 'number' ? Math.max(40,Math.min(110,c.imageHeight)) : undefined };
   });
